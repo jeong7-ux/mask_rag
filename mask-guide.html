@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" href="data:,">
     <title>코로나19 마스크 방역지침 RAG AI (앱 사이즈)</title>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -593,6 +594,7 @@
                         <p>Supabase Vector DB 61건 실시간 연결</p>
                     </div>
                 </div>
+                <button class="btn-settings" onclick="openApiKeySettings()" title="API Key 설정"><i class="fa-solid fa-gear"></i></button>
             </div>
 
             <!-- Segmented RAG Type Switcher -->
@@ -1097,7 +1099,22 @@ ${finalContext}`;
                 if (loadingEl) loadingEl.remove();
 
                 log(`[ERROR] 처리 중 오류: ${err.message}`, 'info');
-                alert("오류 발생: " + err.message);
+
+                const qualityMetricsEl = document.getElementById('chunk-quality-metrics');
+                if (qualityMetricsEl) {
+                    qualityMetricsEl.innerHTML = `<span style="color:#f87171; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> 오류 발생: 우측 상단 ⚙️ 설정에서 OpenRouter Key를 확인하세요.</span>`;
+                }
+
+                messagesEl.innerHTML += `
+                    <div class="msg assistant">
+                        <div class="msg-meta" style="color:#f87171;"><i class="fa-solid fa-circle-exclamation"></i> 시스템 안내</div>
+                        <div class="msg-bubble" style="border: 1px solid rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.08); color: #fecaca;">
+                            <b>오류 발생:</b> ${err.message.replace(/\n/g, '<br>')}<br><br>
+                            💡 <b>해결 안내:</b> 화면 우측 상단의 <b>[<i class="fa-solid fa-gear"></i> 설정]</b> 버튼을 클릭하여 브라우저 환경에서 정상 작동하는 <code>OpenRouter API Key(sk-or-v1-...)</code>를 입력해 주세요.
+                        </div>
+                    </div>
+                `;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
             } finally {
                 btnSend.disabled = false;
             }
