@@ -272,61 +272,73 @@
 
         /* Citation Box */
         .citation-box {
-            margin-top: 10px;
-            background: rgba(0, 0, 0, 0.45);
-            border: 1px solid rgba(16, 185, 129, 0.35);
-            border-radius: 12px;
-            padding: 9px 11px;
-            font-size: 11.5px;
-            color: #a7f3d0;
+            margin-top: 14px;
+            background: rgba(11, 19, 31, 0.85);
+            border: 1px solid rgba(16, 185, 129, 0.45);
+            border-radius: 16px;
+            padding: 14px;
+            font-size: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         }
 
         .citation-title {
             font-weight: 700;
-            color: var(--accent-emerald);
+            color: #6ee7b7;
             display: flex;
             align-items: center;
-            gap: 5px;
-            margin-bottom: 5px;
-            font-size: 11px;
+            gap: 6px;
+            margin-bottom: 8px;
+            font-size: 11.5px;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+            padding-bottom: 8px;
         }
 
         .citation-item {
-            margin-top: 6px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
-            border-bottom: 1px dashed rgba(16, 185, 129, 0.2);
-            padding: 6px 4px;
+            gap: 14px;
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 9px 12px;
             cursor: pointer;
-            transition: background 0.2s;
-            border-radius: 6px;
+            transition: all 0.25s ease;
+            border-radius: 10px;
         }
 
         .citation-item:hover {
-            background: rgba(16, 185, 129, 0.1);
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.5);
+            transform: translateY(-1px);
         }
 
         .citation-text {
-            color: #cbd5e1;
+            color: #f1f5f9;
             font-weight: 400;
             font-size: 11.5px;
-            line-height: 1.4;
-            word-break: break-word;
+            line-height: 1.45;
+            word-break: keep-all;
+            text-decoration: none !important;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            flex: 1;
         }
 
         .btn-open-pdf {
-            flex-shrink: 0;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 3px 9px;
-            border-radius: 8px;
+            justify-content: center;
+            gap: 5px;
+            padding: 5px 11px;
+            border-radius: 20px;
             font-size: 10.5px;
             font-weight: 700;
-            text-decoration: none;
-            border: 1px solid rgba(16, 185, 129, 0.6);
+            text-decoration: none !important;
+            border: 1px solid rgba(16, 185, 129, 0.8);
+            color: #ffffff !important;
             animation: pulseOpenBtn 1.5s infinite ease-in-out;
         }
 
@@ -343,7 +355,7 @@
                 border-color: #06b6d4;
                 box-shadow: 0 0 14px rgba(6, 182, 212, 0.85);
                 color: #ffffff;
-                transform: scale(1.06);
+                transform: scale(1.05);
             }
         }
 
@@ -1169,7 +1181,7 @@ ${finalContext}`;
                     let pNum = inferPdfPage(c);
                     let safeTitle = c.replace(/'/g, "").replace(/"/g, "");
                     return `<li class="citation-item" onclick="openPdfViewer(${pNum}, '${safeTitle}')">
-                        <span class="citation-text"><i class="fa-solid fa-file-pdf" style="color:#10b981; margin-right:4px;"></i>${c}</span>
+                        <span class="citation-text"><i class="fa-solid fa-file-pdf" style="color:#10b981; margin-top:2px; flex-shrink:0;"></i><span>${c}</span></span>
                         <span class="btn-open-pdf">📄 원본 p.${pNum} 열기 ▶</span>
                     </li>`;
                 }).join("");
@@ -1184,7 +1196,7 @@ ${finalContext}`;
                             ${answer.replace(/\n/g, '<br>')}
                             <div class="citation-box">
                                 <div class="citation-title"><i class="fa-solid fa-file-shield"></i> 근거 법조문 및 공식 지침 (제9판)</div>
-                                <ul style="list-style:none; display:flex; flex-direction:column; gap:3px;">
+                                <ul style="list-style:none; display:flex; flex-direction:column; gap:6px;">
                                     ${citesHtml}
                                 </ul>
                             </div>
