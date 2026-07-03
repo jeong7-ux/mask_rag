@@ -4,8 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="icon" href="data:,">
-    <title>코로나19 마스크 방역지침 RAG AI (앱 사이즈)</title>
+    <title>코로나19 마스크 방역지침 RAG AI (서버리스 프록시 v9.2)</title>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Font Awesome Icons -->
@@ -817,26 +820,30 @@
         async function callSupabaseEdgeFunction(action, payload) {
             const supabaseUrl = document.getElementById('cfg-supabase-url').value;
             const supabaseKey = document.getElementById('cfg-supabase-key').value;
-            if (!window.supabaseClientInstance) {
-                window.supabaseClientInstance = window.supabase.createClient(supabaseUrl, supabaseKey);
-            }
-            const { data, error } = await window.supabaseClientInstance.functions.invoke('mask-ai', {
-                body: { action: action, ...payload }
+            const res = await fetch(`${supabaseUrl}/functions/v1/mask-ai`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${supabaseKey}`,
+                    "apikey": supabaseKey
+                },
+                body: JSON.stringify({ action, ...payload })
             });
-            if (error) throw new Error(`[Supabase Edge Function 오류] ${error.message || JSON.stringify(error)}`);
-            if (data && data.error) throw new Error(`[서버리스 API 오류] ${data.error}`);
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                throw new Error(data.error || res.statusText);
+            }
             return data;
         }
 
         async function getEmbedding(text) {
             const { key, type } = getUnifiedApiKey();
             if (!key) {
-                // 키가 없으면 Supabase Edge Function 백엔드 프록시 자동 호출
                 try {
                     const data = await callSupabaseEdgeFunction('embed', { text });
                     if (data && data.embedding) return data.embedding;
                 } catch (edgeErr) {
-                    throw new Error("💡 [API Key 또는 백엔드 프록시 설정 필요]\n저장된 API Key가 없으며 Supabase Edge Function(mask-ai) 호출에 실패했습니다.\n\n우측 상단 [⚙️ 설정] 버튼을 눌러 OpenRouter Key를 입력하시거나, Supabase에 mask-ai 함수 배포를 완료해 주세요!");
+                    throw new Error(`[서버리스 통신 오류] 임베딩 추출에 실패했습니다: ${edgeErr.message}`);
                 }
             }
 
@@ -879,12 +886,11 @@
                 return data.data[0].embedding;
             } catch (err) {
                 if (err.message && (err.message.includes("Failed to fetch") || err.name === "TypeError")) {
-                    // CORS 차단 시 Supabase Edge Function 프록시 자동 폴백 시도
                     try {
                         const data = await callSupabaseEdgeFunction('embed', { text });
                         if (data && data.embedding) return data.embedding;
                     } catch (edgeErr) {
-                        throw new Error("🚫 [브라우저 CORS 차단 오류]\n저장된 API Key(sk-...)가 브라우저 보안 정책에 의해 차단되었습니다.\n\n💡 [해결 방법]: 우측 상단의 [⚙️ 설정] 버튼을 눌러 브라우저 통신이 완벽 지원되는 OpenRouter Key(sk-or-v1-...)를 입력해 주세요!");
+                        throw new Error(`[서버 통신 오류] 임베딩 변환에 실패했습니다: ${edgeErr.message}`);
                     }
                 }
                 throw err;
@@ -898,7 +904,7 @@
                     const data = await callSupabaseEdgeFunction('chat', { systemPrompt, userQuery });
                     if (data && data.content) return data.content;
                 } catch (edgeErr) {
-                    throw new Error("💡 [API Key 또는 백엔드 프록시 필요]\n저장된 API Key가 없습니다. 우측 상단 [⚙️ 설정] 버튼에서 API Key를 입력해 주세요.");
+                    throw new Error(`[서버리스 통신 오류] 답변 생성에 실패했습니다: ${edgeErr.message}`);
                 }
             }
 
@@ -958,7 +964,7 @@
                         const data = await callSupabaseEdgeFunction('chat', { systemPrompt, userQuery });
                         if (data && data.content) return data.content;
                     } catch (edgeErr) {
-                        throw new Error("🚫 [브라우저 CORS 차단 오류]\nLLM API 직접 호출이 차단되었습니다. 우측 상단 ⚙️ 설정에서 OpenRouter API Key를 입력해 주세요!");
+                        throw new Error(`[서버 통신 오류] 답변 생성에 실패했습니다: ${edgeErr.message}`);
                     }
                 }
                 throw err;
@@ -1127,15 +1133,15 @@ ${finalContext}`;
 
                 const qualityMetricsEl = document.getElementById('chunk-quality-metrics');
                 if (qualityMetricsEl) {
-                    qualityMetricsEl.innerHTML = `<span style="color:#f87171; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> 오류 발생: 우측 상단 ⚙️ 설정에서 OpenRouter Key를 확인하세요.</span>`;
+                    qualityMetricsEl.innerHTML = `<span style="color:#f87171; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> 오류 발생: ${err.message}</span>`;
                 }
 
                 messagesEl.innerHTML += `
                     <div class="msg assistant">
                         <div class="msg-meta" style="color:#f87171;"><i class="fa-solid fa-circle-exclamation"></i> 시스템 안내</div>
                         <div class="msg-bubble" style="border: 1px solid rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.08); color: #fecaca;">
-                            <b>오류 발생:</b> ${err.message.replace(/\n/g, '<br>')}<br><br>
-                            💡 <b>해결 안내:</b> 화면 우측 상단의 <b>[<i class="fa-solid fa-gear"></i> 설정]</b> 버튼을 클릭하여 브라우저 환경에서 정상 작동하는 <code>OpenRouter API Key(sk-or-v1-...)</code>를 입력해 주세요.
+                            <b>안내:</b> ${err.message.replace(/\n/g, '<br>')}<br><br>
+                            💡 <b>해결 안내:</b> 일시적인 통신 지연이나 네트워크 접속 문제일 수 있습니다. 페이지를 새로고침하신 후 다시 시도해 주세요.
                         </div>
                     </div>
                 `;
