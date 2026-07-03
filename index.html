@@ -816,7 +816,8 @@
             const iframeUrl = encodeURI(pdfFilename) + `#page=${page}&toolbar=0&navpanes=0&statusbar=0&view=FitH`;
             const externalUrl = encodeURI(pdfFilename) + `#page=${page}`;
 
-            document.getElementById('pdf-title').innerHTML = `<i class="fa-solid fa-file-pdf"></i> 원본 지침서(제9판) p.${page} 열람`;
+            const pageHeaderLabel = page >= 6 ? `본문 p.${page - 5} (PDF ${page}p)` : `PDF ${page}p`;
+            document.getElementById('pdf-title').innerHTML = `<i class="fa-solid fa-file-pdf"></i> 원본 지침서(제9판) ${pageHeaderLabel} 열람`;
             document.getElementById('pdf-desc').innerText = title;
             document.getElementById('pdf-iframe').src = iframeUrl;
             document.getElementById('btn-open-external').onclick = () => window.open(externalUrl, '_blank');
@@ -1188,9 +1189,10 @@ ${finalContext}`;
                 let citesHtml = uniqueCites.map(c => {
                     let pNum = inferPdfPage(c);
                     let safeTitle = c.replace(/'/g, "").replace(/"/g, "");
+                    let pageLabel = pNum >= 6 ? `p.${pNum - 5} (PDF ${pNum}p)` : `PDF ${pNum}p`;
                     return `<li class="citation-item" onclick="openPdfViewer(${pNum}, '${safeTitle}')">
                         <span class="citation-text"><i class="fa-solid fa-file-pdf" style="color:#10b981; margin-top:2px; flex-shrink:0;"></i><span>${c}</span></span>
-                        <span class="btn-open-pdf">📄 원본 p.${pNum} 열기 ▶</span>
+                        <span class="btn-open-pdf">📄 원본 ${pageLabel} 열기 ▶</span>
                     </li>`;
                 }).join("");
 
