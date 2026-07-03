@@ -801,17 +801,6 @@
             let storedOa = localStorage.getItem('MASK_RAG_OPENAI_KEY');
             if (storedOa) return { key: storedOa, type: storedOa.startsWith('sk-or-') ? 'openrouter' : 'openai' };
 
-            let inputKey = prompt('OpenRouter API Key (sk-or-...) 또는 OpenAI API Key (sk-...)를 입력해 주세요.\n(입력된 키는 브라우저 로컬 스토리지에 안전하게 보관됩니다):');
-            if (inputKey && inputKey.trim()) {
-                inputKey = inputKey.trim();
-                if (inputKey.startsWith('sk-or-')) {
-                    localStorage.setItem('MASK_RAG_OPENROUTER_KEY', inputKey);
-                    return { key: inputKey, type: 'openrouter' };
-                } else {
-                    localStorage.setItem('MASK_RAG_OPENAI_KEY', inputKey);
-                    return { key: inputKey, type: 'openai' };
-                }
-            }
             return { key: '', type: 'none' };
         }
 
