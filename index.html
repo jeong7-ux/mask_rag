@@ -833,14 +833,22 @@
 
         function inferPdfPage(secPath) {
             if (!secPath) return 5;
-            if (secPath.includes('개정사항')) return 4;
-            if (secPath.includes('개요') || secPath.includes('추진 배경')) return 3;
-            if (secPath.includes('예외') || secPath.includes('영유아')) return 7;
-            if (secPath.includes('인정 기준') || secPath.includes('망사') || secPath.includes('밸브')) return 8;
-            if (secPath.includes('부과 기준') || secPath.includes('과태료 부과')) return 9;
-            if (secPath.includes('절차') || secPath.includes('징수')) return 11;
-            if (secPath.includes('Q&A') || secPath.includes('질의응답') || secPath.includes('붙임')) return 14;
-            return 5;
+            if (secPath.includes('붙임 4')) return 25;
+            if (secPath.includes('붙임 3')) return 23;
+            if (secPath.includes('붙임 2')) return 21;
+            if (secPath.includes('붙임 1') || secPath.includes('붙임')) return 19;
+            if (secPath.includes('이의제기') || secPath.includes('후속조치')) return 18;
+            if (secPath.includes('의견 제출') || secPath.includes('사전통지')) return 15;
+            if (secPath.includes('상세 절차') || secPath.includes('단속')) return 14;
+            if (secPath.includes('예외') || secPath.includes('영유아')) return 13;
+            if (secPath.includes('해석례') || secPath.includes('음식점')) return 12;
+            if (secPath.includes('과태료금액') || secPath.includes('과태료 금액') || secPath.includes('위반 시 과태료') || secPath.includes('감경')) return 11;
+            if (secPath.includes('망사') || secPath.includes('밸브') || secPath.includes('인정 기준') || secPath.includes('마스크 종류')) return 10;
+            if (secPath.includes('의무화 장소') || secPath.includes('명령 대상') || secPath.includes('과태료 부과기준') || secPath.includes('과태료 부과 기준')) return 8;
+            if (secPath.includes('개요') || secPath.includes('추진 배경')) return 6;
+            if (secPath.includes('목차')) return 5;
+            if (secPath.includes('개정사항')) return 3;
+            return 8;
         }
 
         function log(msg, type = 'info') {
