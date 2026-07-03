@@ -825,10 +825,30 @@
             return res.key;
         }
 
+        async function callSupabaseEdgeFunction(action, payload) {
+            const supabaseUrl = document.getElementById('cfg-supabase-url').value;
+            const supabaseKey = document.getElementById('cfg-supabase-key').value;
+            if (!window.supabaseClientInstance) {
+                window.supabaseClientInstance = window.supabase.createClient(supabaseUrl, supabaseKey);
+            }
+            const { data, error } = await window.supabaseClientInstance.functions.invoke('mask-ai', {
+                body: { action: action, ...payload }
+            });
+            if (error) throw new Error(`[Supabase Edge Function 오류] ${error.message || JSON.stringify(error)}`);
+            if (data && data.error) throw new Error(`[서버리스 API 오류] ${data.error}`);
+            return data;
+        }
+
         async function getEmbedding(text) {
             const { key, type } = getUnifiedApiKey();
             if (!key) {
-                throw new Error("API 키가 입력되지 않았습니다. 설정 팝업이나 안내창에서 API 키를 입력해 주세요.");
+                // 키가 없으면 Supabase Edge Function 백엔드 프록시 자동 호출
+                try {
+                    const data = await callSupabaseEdgeFunction('embed', { text });
+                    if (data && data.embedding) return data.embedding;
+                } catch (edgeErr) {
+                    throw new Error("💡 [API Key 또는 백엔드 프록시 설정 필요]\n저장된 API Key가 없으며 Supabase Edge Function(mask-ai) 호출에 실패했습니다.\n\n우측 상단 [⚙️ 설정] 버튼을 눌러 OpenRouter Key를 입력하시거나, Supabase에 mask-ai 함수 배포를 완료해 주세요!");
+                }
             }
 
             // 1차 시도: OpenRouter 임베딩 API
@@ -869,8 +889,14 @@
                 }
                 return data.data[0].embedding;
             } catch (err) {
-                if (err.message && err.message.includes("Failed to fetch")) {
-                    throw new Error("네트워크 오류(Failed to fetch): GitHub Pages에서 API 호출 시 브라우저 CORS 제한이나 API 키 인증 오류가 발생했습니다. OpenRouter API Key(sk-or-...)를 사용하시면 안전하게 작동합니다.");
+                if (err.message && (err.message.includes("Failed to fetch") || err.name === "TypeError")) {
+                    // CORS 차단 시 Supabase Edge Function 프록시 자동 폴백 시도
+                    try {
+                        const data = await callSupabaseEdgeFunction('embed', { text });
+                        if (data && data.embedding) return data.embedding;
+                    } catch (edgeErr) {
+                        throw new Error("🚫 [브라우저 CORS 차단 오류]\n저장된 API Key(sk-...)가 브라우저 보안 정책에 의해 차단되었습니다.\n\n💡 [해결 방법]: 우측 상단의 [⚙️ 설정] 버튼을 눌러 브라우저 통신이 완벽 지원되는 OpenRouter Key(sk-or-v1-...)를 입력해 주세요!");
+                    }
                 }
                 throw err;
             }
@@ -879,7 +905,12 @@
         async function callLLM(systemPrompt, userQuery) {
             const { key, type } = getUnifiedApiKey();
             if (!key) {
-                throw new Error("API 키가 입력되지 않았습니다. 설정에서 API 키를 입력해 주세요.");
+                try {
+                    const data = await callSupabaseEdgeFunction('chat', { systemPrompt, userQuery });
+                    if (data && data.content) return data.content;
+                } catch (edgeErr) {
+                    throw new Error("💡 [API Key 또는 백엔드 프록시 필요]\n저장된 API Key가 없습니다. 우측 상단 [⚙️ 설정] 버튼에서 API Key를 입력해 주세요.");
+                }
             }
 
             // 1차 시도: OpenRouter API
@@ -933,8 +964,13 @@
                 }
                 return dataOa.choices[0].message.content;
             } catch (err) {
-                if (err.message && err.message.includes("Failed to fetch")) {
-                    throw new Error("네트워크 오류(Failed to fetch): GitHub Pages 브라우저 환경에서 LLM 통신이 차단되었습니다. OpenRouter API Key를 사용하거나 네트워크 연결을 확인해주세요.");
+                if (err.message && (err.message.includes("Failed to fetch") || err.name === "TypeError")) {
+                    try {
+                        const data = await callSupabaseEdgeFunction('chat', { systemPrompt, userQuery });
+                        if (data && data.content) return data.content;
+                    } catch (edgeErr) {
+                        throw new Error("🚫 [브라우저 CORS 차단 오류]\nLLM API 직접 호출이 차단되었습니다. 우측 상단 ⚙️ 설정에서 OpenRouter API Key를 입력해 주세요!");
+                    }
                 }
                 throw err;
             }
