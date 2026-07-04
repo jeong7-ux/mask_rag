@@ -1,103 +1,81 @@
-# DAPA 공개자료 기반 RAG 문서 검색·답변 시스템
+# 코로나19 마스크 착용 방역지침 RAG AI (서버리스 프록시 v9.2)
 
-방위사업청 내부 문서나 기관 고유 양식은 사용하지 않고, dapa.go.kr 공개 페이지와 일반 공공기관 문서 양식을 참고해 만든 10장 이내 샘플 공문서를 Supabase Vector DB에 적재한 뒤 문서 검색, 근거 재정렬, 답변 생성을 수행하는 RAG 과제 제출물입니다.
+질병관리청 및 지방자치단체의 **[마스크 착용 방역지침 준수 명령 및 과태료 부과 업무 안내서(제9판)]** 공식 공공문서를 기반으로 구축된 고도화된 AI 질의응답(RAG) 시스템입니다.
 
-## 📌 배포 서비스
-- **웹 서비스 접속 Link**: [https://ai-studying-man.github.io/rag_ax/](https://ai-studying-man.github.io/rag_ax/)
+공식 지침서 전문을 계층형·의미론적(Parent-Child & Semantic Chunking) 구조로 분할하여 **Supabase Vector DB**(`pgvector`)에 적재하였으며, **OpenRouter / OpenAI API** 및 **Supabase Edge Functions** 서버리스 프록시를 연동하여 법적 근거, 과태료 부과 기준, 예외 대상 등을 정확하게 답변하고 원본 PDF 조항을 즉시 대조할 수 있도록 지원합니다.
 
 ---
 
-## 🛠️ 구현 범위
+## 📌 배포 서비스 (Live Demo)
 
-| 과제 항목 | 구현 내용 |
+- **🌐 웹 서비스 접속 Link**: [https://jeong7-ux.github.io/mask_rag/](https://jeong7-ux.github.io/mask_rag/)
+- **🐙 GitHub Repository**: [https://github.com/jeong7-ux/mask_rag](https://github.com/jeong7-ux/mask_rag)
+
+---
+
+## ✨ 핵심 기능 및 RAG 아키텍처
+
+### 1. 3가지 고도화된 RAG 모드 지원
+- **🟢 Naive RAG**: 검색된 단편 조문 청크 본문만을 직관적으로 LLM에 전달하여 신속하게 답변을 도출합니다.
+- **🔵 Advanced RAG (HyDE)**: 가설 질의 생성(Hypothetical Document Embeddings) 및 전문 행정 키워드 확장을 통해 사용자의 일상적인 질문을 공식 지침 법률 용어로 변환하여 검색 정밀도를 극대화합니다.
+- **🟣 Modular RAG (Parent-Child Context Assembly)**: 벡터 검색은 450~700자 단위의 하위 청크(Child Chunk)로 정밀하게 수행하고, 답변 생성 시에는 해당 청크가 소속된 상위 문맥(Parent Context) 전체 단락을 자동 복원하여 LLM에 제공함으로써 문맥 단절 없는 완벽한 답변을 생성합니다.
+
+### 2. 실시간 의미론적 적합도 평가 (Quality Metrics)
+- 1,536차원 임베딩 코사인 내적값(Cosine Similarity)을 백분율 형태의 의미론적 적합도(Normalized Relevance Score)로 정규화 보정합니다.
+- 검색 결과 상단에 **'✨ 최고 일치'**, **'👍 높은 일치'** 등의 직관적인 품질 배지와 선별 청크 평균 적합도를 실시간으로 시각화합니다.
+
+### 3. 인터랙티브 원본 PDF 대조 뷰어
+- 답변 하단에 생성되는 **근거 법조문 인용 버튼**(`📄 원본 p.OO 열기`) 클릭 시, 내장된 PDF 뷰어 모달이 실행됩니다.
+- PDF 물리 페이지와 실제 문서 인쇄 페이지(목차, p.5 등) 간의 차이를 1:1 완벽하게 매핑하여 해당 조항 페이지로 즉시 이동합니다.
+- 모바일/PC 환경을 고려한 상단바 숨김/표시 토글 및 새 창 열기 기능을 제공합니다.
+
+### 4. 하이브리드 LLM 연동 및 서버리스 프록시 폴백
+- 클라이언트에서 사용자의 OpenRouter API Key 또는 OpenAI API Key 입력을 지원합니다.
+- API 키 미입력 시 또는 CORS/네트워크 제한 환경에서는 **Supabase Edge Functions**(`mask-ai`)를 통한 서버리스 프록시 모드로 자동 전환(Fallback)되어 중단 없는 서비스를 제공합니다.
+
+---
+
+## 🛠️ 기술 스택
+
+| 구분 | 적용 기술 |
 | :--- | :--- |
-| **문서** | `dapa-rag-assignment/docs/dapa_public_sample_official_document.md`에 10장 이내 공문서 형식 샘플 작성 |
-| **기관 양식 참고** | DAPA 공개 홈페이지의 조직도, 직원/담당업무, 공지사항, 민원업무 안내 링크를 문서와 메타데이터에 반영 |
-| **청킹** | 제목 구조 보존 후 450~700자 단위 recursive character chunking, 약 100자 overlap 적용 |
-| **Vector DB** | Supabase pgvector 테이블 `dapa_rag_assignment_chunks`와 검색 RPC 구성 |
-| **Chat Model** | OpenRouter Chat Completions API 연동, 기본 모델 `google/gemini-2.5-flash` |
-| **Re-rank** | Cohere `rerank-v3.5` 연동 |
-| **RAG 방식** | 벡터 검색 + 키워드 검색 + Cohere rerank + OpenRouter 답변 생성의 Hybrid RAG |
-| **배포** | GitHub Pages 정적 웹 서비스로 문서 검색·답변 UI 제공 |
+| **Frontend** | HTML5, Vanilla CSS3 (Modern Dark Glassmorphism Theme), JavaScript (ES6+), Font Awesome 6.4 |
+| **Vector DB** | Supabase (`pgvector`, `match_documents_mask_guidelines` RPC) |
+| **LLM & Embeddings** | OpenRouter API (`openai/gpt-4o-mini`), OpenAI API (`text-embedding-3-small`), Supabase Edge Functions (Deno) |
+| **Hosting / Deploy** | GitHub Pages (`.nojekyll` 정적 배포 최적화) |
 
 ---
 
 ## 💡 웹 서비스 사용 방법
 
-1. **서비스 접속**: [https://ai-studying-man.github.io/rag_ax/](https://ai-studying-man.github.io/rag_ax/) 페이지에 접속합니다.
-2. **질문 입력**: 질의하고자 하는 내용을 입력합니다.
-3. **API Key 입력**: Cohere API Key와 OpenRouter API Key를 입력합니다.
-4. **검색 및 답변 생성**: 검색 후 답변 생성 실행 버튼을 클릭합니다.
-5. **결과 확인**: Supabase 검색 후보, Cohere 재정렬 근거, OpenRouter 답변 및 토큰 사용량을 실시간으로 확인합니다.
-
-> ⚠️ **API 키 및 보안 안내**  
-> API 키는 브라우저 메모리에서만 사용하며 서버나 외부 DB에 절대 저장하지 않습니다. Supabase는 공개 샘플 문서에 한정된 Read-only 정책과 Publishable key로 조회합니다.
-
----
-
-## 🔄 RAG 처리 흐름
-
-1. **사용자 질의 입력** → Hybrid Search (Supabase Vector Search + Keyword Search RPC)
-2. **후보 문서 조회** → `dapa_rag_assignment_chunks` 테이블 조회
-3. **Re-ranking** → Cohere `rerank-v3.5` 모델을 통한 문맥 근거 정확도 재정렬
-4. **Prompt 구성 및 답변 생성** → OpenRouter (`google/gemini-2.5-flash`) API 기반 답변 생성 및 출처 근거 제시
+1. **페이지 접속**: [https://jeong7-ux.github.io/mask_rag/](https://jeong7-ux.github.io/mask_rag/) 링크를 통해 서비스에 접속합니다.
+2. **API 설정 (선택)**: 상단 설정 버튼 또는 좌측 메뉴에서 OpenRouter / OpenAI API Key를 입력합니다. (미입력 시 서버리스 프록시 기본 모드로 동작합니다.)
+3. **RAG 모드 선택**: 화면 상단의 모드 바에서 `Naive`, `Advanced(HyDE)`, `Modular` 중 원하는 검색 방식을 선택합니다.
+4. **질문 입력**: 질의창에 마스크 착용 의무, 과태료, 예외 규정 등 궁금한 내용을 자유롭게 입력합니다.
+   - *예시 1*: "병원 일반 병실이나 대기실에서도 마스크를 의무적으로 써야 하나요?"
+   - *예시 2*: "과태료 부과 예외 대상인 영유아의 정확한 연령 기준은 어떻게 되나요?"
+   - *예시 3*: "망사형 마스크나 밸브형 마스크를 착용하면 과태료가 부과되나요?"
+5. **원본 조항 검증**: 답변 하단의 '근거 법조문 및 공식 지침' 카드를 클릭하여 뷰어로 원본 내용을 직접 대조합니다.
 
 ---
 
-## 📁 주요 파일 구조
+## 📁 주요 파일 및 폴더 구조
 
 ```text
-index.html
-styles.css
-app.js
-supabase_public_access.sql
-dapa-rag-assignment/
-  ├── docs/dapa_public_sample_official_document.md
-  ├── data/dapa_public_sample_chunks.json
-  ├── data/dapa_public_sample_embedded_chunks.json
-  ├── scripts/prepare_chunks.mjs
-  ├── scripts/embed_and_upload.mjs
-  ├── scripts/test_retrieval.mjs
-  ├── scripts/answer_with_openrouter.mjs
-  ├── supabase/schema.sql
-  └── results/openrouter_answer_evidence.md
+mask_rag/
+  ├── index.html                   # 메인 웹 어플리케이션 UI (RAG 채팅, PDF 뷰어, 설정)
+  ├── mask-guide.html              # 방역지침 업무 안내 및 보조 뷰어 페이지
+  ├── mask_guidelines_v9.pdf       # 코로나19 마스크 착용 방역지침 준수 명령 업무 안내서(제9판) 원본 PDF
+  ├── .nojekyll                    # GitHub Pages 정적 배포 시 Jekyll 빌드 에러 방지 파일
+  └── supabase/
+      └── functions/
+          └── mask-ai/             # Supabase Edge Function (서버리스 임베딩 및 채팅 프록시)
 ```
 
 ---
 
-## 🗄️ Supabase 구성
+## 🔒 보안 및 개인정보 처리 기준
 
-DB 객체명은 과제 요구사항에 맞춰 충돌 가능성을 줄이기 위해 `dapa_rag_assignment_` 접두사를 사용했습니다.
-
-- **테이블**: `public.dapa_rag_assignment_chunks`
-- **벡터 검색 RPC**: `public.dapa_rag_assignment_match_chunks`
-- **키워드 검색 RPC**: `public.dapa_rag_assignment_keyword_chunks`
-- **적재 청크 수**: 11개
-- **임베딩 모델**: Cohere `embed-multilingual-v3.0`
-- **임베딩 차원**: 1024
-
-> GitHub Pages에서 Read-only 검색이 가능하도록 적용한 공개 정책은 `supabase_public_access.sql`에 정리되어 있습니다.
-
----
-
-## ✅ 검증 결과
-
-- [x] 샘플 공문서 생성 완료
-- [x] 11개 청크 생성 완료
-- [x] Cohere 임베딩 생성 및 Supabase 적재 완료
-- [x] Supabase Vector RPC와 Keyword RPC 검색 확인
-- [x] Cohere rerank 호출 확인
-- [x] OpenRouter Chat Model 실제 호출 확인
-  - **OpenRouter Usage 기록**: `prompt_tokens=1008`, `completion_tokens=134`, `total_tokens=1142`, `cost=0.0006374`
-- [x] GitHub Pages 정적 서비스 구성 완료
-
-> **참고**: OpenRouter 호출 증빙은 `dapa-rag-assignment/results/openrouter_answer_evidence.md`와 원본 JSON 파일에 저장되었습니다.
-
----
-
-## 🔒 보안 기준
-
-1. 방위사업청 내부 문서, 비공개 문서 양식, 민감정보는 사용하지 않았습니다.
-2. Supabase Service Role Key는 클라이언트에 포함하지 않았습니다.
-3. Cohere/OpenRouter API Key는 사용자가 화면에 직접 입력하며 저장하지 않습니다.
-4. 공개 웹서비스는 `metadata.security_level = public_sample` 청크만 조회하도록 Supabase RLS 정책을 적용했습니다.
+1. **API Key 보호**: 사용자가 화면에 입력한 API Key는 브라우저 메모리 및 로컬 스토리지(`localStorage`)에만 안전하게 보관되며, 외부 서버나 데이터베이스로 전송·저장되지 않습니다.
+2. **공공 데이터 안전성**: 본 시스템은 질병관리청에서 대중에 공식 배포한 공공 안내서(제9판)만을 참조하며, 민감한 개인정보나 비공개 내부 문서는 포함하지 않습니다.
+3. **Read-Only 접근**: 클라이언트에서는 Supabase Publishable Key를 통한 읽기 전용(Read-only) 정책만 허용되어 데이터베이스 무결성이 유지됩니다.
